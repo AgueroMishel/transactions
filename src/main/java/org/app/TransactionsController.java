@@ -21,7 +21,7 @@ import org.app.models.Statistics;
 import org.app.models.Transaction;
 
 @RestController
-public class TransactionsController {
+class TransactionsController {
     @GetMapping("transactions")
     public ConcurrentHashMap<Integer,Transaction> getTransactions() {
         return TransactionsHandler.getInstance().getAllTransactions();
