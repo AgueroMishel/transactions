@@ -3,6 +3,7 @@ package org.app.models;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Statistics {
@@ -35,6 +36,11 @@ public class Statistics {
 
     public String getSum() {
         return formatBigDecimal(sum);
+    }
+
+    @JsonIgnore
+    public BigDecimal getBigDecimalSum() {
+        return sum;
     }
 
     public String getAvg() {

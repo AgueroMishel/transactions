@@ -1,6 +1,6 @@
 package org.app;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.LinkedList;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,7 +22,7 @@ import org.app.models.Transaction;
 @RestController
 class TransactionsController {
     @GetMapping("transactions")
-    public ConcurrentHashMap<Integer,Transaction> getTransactions() {
+    public LinkedList<Transaction> getTransactions() {
         return TransactionsHandler.getInstance().getAllTransactions();
     }
 
