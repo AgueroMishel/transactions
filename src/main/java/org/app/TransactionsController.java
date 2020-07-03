@@ -1,6 +1,6 @@
 package org.app;
 
-import java.util.LinkedList;
+import java.util.List;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
@@ -22,7 +22,7 @@ import org.app.models.Transaction;
 @RestController
 class TransactionsController {
     @GetMapping("transactions")
-    public LinkedList<Transaction> getTransactions() {
+    public List<Transaction> getTransactions() {
         return TransactionsHandler.getInstance().getAllTransactions();
     }
 

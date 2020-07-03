@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZonedDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
@@ -18,7 +19,7 @@ import org.app.models.Transaction;
 @Service
 public class TransactionsHandler implements Observer {
     private static TransactionsHandler instance;
-    private static LinkedList<Transaction> storage;
+    private static List<Transaction> storage;
     private static boolean statisticsCalculated = false;
     private static Statistics statistics;
 
@@ -34,7 +35,7 @@ public class TransactionsHandler implements Observer {
         return instance;
     }
 
-    public LinkedList<Transaction> getAllTransactions() {
+    public List<Transaction> getAllTransactions() {
         return storage;
     }
 
@@ -79,8 +80,8 @@ public class TransactionsHandler implements Observer {
                 sum = statistics.getBigDecimalSum().subtract(transaction.getAmount());
             }
 
-            max = storage.getFirst().getAmount();
-            min = storage.getLast().getAmount();
+            max = ((LinkedList<Transaction>) storage).getFirst().getAmount();
+            min = ((LinkedList<Transaction>) storage).getLast().getAmount();
         } else {
             max = transaction.getAmount();
             min = transaction.getAmount();
