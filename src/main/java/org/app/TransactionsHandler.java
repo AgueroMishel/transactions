@@ -3,36 +3,39 @@ package org.app;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZonedDateTime;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
+import java.util.Collections;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Observable;
+import java.util.Observer;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import org.app.models.Statistics;
 import org.app.models.Transaction;
 
 @Service
-public class TransactionsHandler {
+public class TransactionsHandler implements Observer {
     private static TransactionsHandler instance;
-    private static ConcurrentHashMap<Integer,Transaction> storage;
-    private static int nextKey = 0;
+    private static List<Transaction> storage;
+    private static boolean statisticsCalculated = false;
     private static Statistics statistics;
-
-    static {
-        instance = new TransactionsHandler();
-        storage = new ConcurrentHashMap<>();
-    }
 
     private TransactionsHandler() {}
 
     public static TransactionsHandler getInstance() {
+        if (instance == null) {
+            instance = new TransactionsHandler();
+            storage = new LinkedList<>();
+            statistics = new Statistics();
+        }
+
         return instance;
     }
 
-    public ConcurrentHashMap<Integer,Transaction> getAllTransactions() {
+    public List<Transaction> getAllTransactions() {
         return storage;
     }
 
@@ -44,8 +47,9 @@ public class TransactionsHandler {
         } else if(transaction.getTimestamp().isBefore(timestamp.minusMinutes(1))) {
             return new ResponseEntity(HttpStatus.NO_CONTENT);
         } else {
-            storage.put(nextKey, transaction);
-            nextKey++;
+            storage.add(transaction);
+            transaction.startAutoDeprecate();
+            calculateStatistics(transaction, true);
         }
 
         return new ResponseEntity(HttpStatus.CREATED);
@@ -53,70 +57,54 @@ public class TransactionsHandler {
 
     public ResponseEntity deleteAllTransactions() {
         storage.clear();
+        clearStatistics();
         return new ResponseEntity(HttpStatus.NO_CONTENT);
     }
 
-    @Scheduled(fixedDelay = 1)
-    public synchronized void createStatistics() {
-        deprecateTransactions();
-        if(storage.size() > 0) {
-            calculateStatistics();
-        } else {
-            statistics = new Statistics();
-        }
+    public synchronized Statistics getStatistics() {
+        return statistics;
     }
 
-    private synchronized void deprecateTransactions() {
-        ZonedDateTime timestamp = ZonedDateTime.now();
-        int currentKey;
-        Transaction currentTransaction;
-
-        for(Map.Entry<Integer,Transaction> currentEntry : storage.entrySet()) {
-            currentKey = currentEntry.getKey();
-            currentTransaction = currentEntry.getValue();
-
-            if(currentTransaction.getTimestamp().isBefore(timestamp.minusMinutes(1))) {
-                storage.remove(currentKey);
-            }
-        }
-    }
-
-    private synchronized void calculateStatistics() {
-        Transaction currentTransaction;
-        BigDecimal currentAmount;
-
-        BigDecimal sum = BigDecimal.valueOf(0);
+    public void calculateStatistics(Transaction transaction, boolean isAdding) {
+        BigDecimal sum;
         BigDecimal avg;
-        BigDecimal max = null;
-        BigDecimal min = null;
-        long count;
+        BigDecimal max;
+        BigDecimal min;
+        long count = storage.size();
 
-        for(Map.Entry<Integer,Transaction> currentEntry : storage.entrySet()) {
-            currentTransaction = currentEntry.getValue();
-            currentAmount = currentTransaction.getAmount();
-
-            if(max == null && min == null) {
-                max = currentAmount;
-                min = currentAmount;
-            } else if(max.compareTo(currentAmount) == -1) {
-                max = currentAmount;
-            } else if(min.compareTo(currentAmount) == 1) {
-                min = currentAmount;
+        if(statisticsCalculated) {
+            if(isAdding) {
+                Collections.sort(storage, (t1, t2) -> t2.getAmount().compareTo(t1.getAmount()));
+                sum = statistics.getBigDecimalSum().add(transaction.getAmount());
+            } else {
+                sum = statistics.getBigDecimalSum().subtract(transaction.getAmount());
             }
 
-            sum = sum.add(currentAmount);
+            max = ((LinkedList<Transaction>) storage).getFirst().getAmount();
+            min = ((LinkedList<Transaction>) storage).getLast().getAmount();
+        } else {
+            max = transaction.getAmount();
+            min = transaction.getAmount();
+            sum = transaction.getAmount();
+
+            statisticsCalculated = true;
         }
 
-        count = storage.size();
         sum = sum.setScale(2);
         avg = sum.divide(BigDecimal.valueOf(count), RoundingMode.HALF_EVEN);
 
         statistics = new Statistics(sum, avg, max, min, count);
     }
 
-    public synchronized Statistics getStatistics() {
-        createStatistics();
+    public void clearStatistics() {
+        statistics = new Statistics();
+        statisticsCalculated = false;
+    }
 
-        return statistics;
+    @Override
+    public synchronized void update(Observable obj, Object arg) {
+        Transaction deprecatedTransaction = (Transaction) arg;
+        storage.remove(deprecatedTransaction);
+        calculateStatistics(deprecatedTransaction, false);
     }
 }
