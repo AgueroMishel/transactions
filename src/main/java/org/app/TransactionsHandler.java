@@ -18,21 +18,12 @@ import org.app.models.Transaction;
 
 @Service
 public class TransactionsHandler implements Observer {
-    private static TransactionsHandler instance;
-    private static List<Transaction> storage;
+    private static List<Transaction> storage = new LinkedList<>();
     private static boolean statisticsCalculated = false;
-    private static Statistics statistics;
+    private static Statistics statistics = new Statistics();
 
-    private TransactionsHandler() {}
+    private TransactionsHandler() {
 
-    public static TransactionsHandler getInstance() {
-        if (instance == null) {
-            instance = new TransactionsHandler();
-            storage = new LinkedList<>();
-            statistics = new Statistics();
-        }
-
-        return instance;
     }
 
     public List<Transaction> getAllTransactions() {
@@ -42,11 +33,12 @@ public class TransactionsHandler implements Observer {
     public synchronized ResponseEntity addSingleTransaction(Transaction transaction) {
         ZonedDateTime timestamp = ZonedDateTime.now();
 
-        if(transaction.getTimestamp().isAfter(timestamp)) {
+        if (transaction.getTimestamp().isAfter(timestamp)) {
             return new ResponseEntity(HttpStatus.UNPROCESSABLE_ENTITY);
-        } else if(transaction.getTimestamp().isBefore(timestamp.minusMinutes(1))) {
+        } else if (transaction.getTimestamp().isBefore(timestamp.minusMinutes(1))) {
             return new ResponseEntity(HttpStatus.NO_CONTENT);
         } else {
+            transaction.addObserver(this);
             storage.add(transaction);
             transaction.startAutoDeprecate();
             calculateStatistics(transaction, true);
@@ -72,28 +64,32 @@ public class TransactionsHandler implements Observer {
         BigDecimal min;
         long count = storage.size();
 
-        if(statisticsCalculated) {
-            if(isAdding) {
-                Collections.sort(storage, (t1, t2) -> t2.getAmount().compareTo(t1.getAmount()));
-                sum = statistics.getBigDecimalSum().add(transaction.getAmount());
+        if (count > 0) {
+            if (statisticsCalculated) {
+                if (isAdding) {
+                    Collections.sort(storage, (t1, t2) -> t2.getAmount().compareTo(t1.getAmount()));
+                    sum = statistics.getBigDecimalSum().add(transaction.getAmount());
+                } else {
+                    sum = statistics.getBigDecimalSum().subtract(transaction.getAmount());
+                }
+
+                max = ((LinkedList<Transaction>) storage).getFirst().getAmount();
+                min = ((LinkedList<Transaction>) storage).getLast().getAmount();
             } else {
-                sum = statistics.getBigDecimalSum().subtract(transaction.getAmount());
+                max = transaction.getAmount();
+                min = transaction.getAmount();
+                sum = transaction.getAmount();
+
+                statisticsCalculated = true;
             }
 
-            max = ((LinkedList<Transaction>) storage).getFirst().getAmount();
-            min = ((LinkedList<Transaction>) storage).getLast().getAmount();
+            sum = sum.setScale(2);
+            avg = sum.divide(BigDecimal.valueOf(count), RoundingMode.HALF_EVEN);
+
+            statistics = new Statistics(sum, avg, max, min, count);
         } else {
-            max = transaction.getAmount();
-            min = transaction.getAmount();
-            sum = transaction.getAmount();
-
-            statisticsCalculated = true;
+            clearStatistics();
         }
-
-        sum = sum.setScale(2);
-        avg = sum.divide(BigDecimal.valueOf(count), RoundingMode.HALF_EVEN);
-
-        statistics = new Statistics(sum, avg, max, min, count);
     }
 
     public void clearStatistics() {

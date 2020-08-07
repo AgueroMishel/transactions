@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,15 +22,18 @@ import org.app.models.Transaction;
 
 @RestController
 class TransactionsController {
+    @Autowired
+    private TransactionsHandler transactionsHandler;
+
     @GetMapping("transactions")
     public List<Transaction> getTransactions() {
-        return TransactionsHandler.getInstance().getAllTransactions();
+        return transactionsHandler.getAllTransactions();
     }
 
     @PostMapping("/transactions")
     public ResponseEntity addTransaction(
             @RequestBody Transaction transaction) {
-        return TransactionsHandler.getInstance().addSingleTransaction(transaction);
+        return transactionsHandler.addSingleTransaction(transaction);
     }
 
     @ExceptionHandler({ValueInstantiationException.class, JsonParseException.class})
@@ -44,11 +48,11 @@ class TransactionsController {
 
     @DeleteMapping("/transactions")
     public ResponseEntity deleteTransactions() {
-        return TransactionsHandler.getInstance().deleteAllTransactions();
+        return transactionsHandler.deleteAllTransactions();
     }
 
     @GetMapping("statistics")
     public Statistics getStatics() {
-        return TransactionsHandler.getInstance().getStatistics();
+        return transactionsHandler.getStatistics();
     }
 }
