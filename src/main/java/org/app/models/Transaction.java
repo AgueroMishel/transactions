@@ -7,8 +7,6 @@ import java.util.Observable;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.app.TransactionsHandler;
-
 public class Transaction extends Observable implements Runnable {
     private BigDecimal amount;
     private ZonedDateTime timestamp;
@@ -18,7 +16,6 @@ public class Transaction extends Observable implements Runnable {
             @JsonProperty("timestamp") String timestamp) {
         this.amount = BigDecimal.valueOf(Double.valueOf(amount));
         this.timestamp = ZonedDateTime.parse(timestamp);
-        addObserver(TransactionsHandler.getInstance());
     }
 
     public BigDecimal getAmount() {
@@ -35,7 +32,7 @@ public class Transaction extends Observable implements Runnable {
 
     @Override
     public synchronized void run() {
-        long sleepTime =  getSleepTime();
+        long sleepTime = getSleepTime();
 
         try {
             Thread.sleep(sleepTime);
