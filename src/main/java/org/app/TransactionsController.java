@@ -25,7 +25,7 @@ class TransactionsController {
     @Autowired
     private TransactionsHandler transactionsHandler;
 
-    @GetMapping("transactions")
+    @GetMapping("/transactions")
     public List<Transaction> getTransactions() {
         return transactionsHandler.getAllTransactions();
     }
@@ -51,7 +51,7 @@ class TransactionsController {
         return transactionsHandler.deleteAllTransactions();
     }
 
-    @GetMapping("statistics")
+    @GetMapping("/statistics")
     public Statistics getStatics() {
         return transactionsHandler.getStatistics();
     }
