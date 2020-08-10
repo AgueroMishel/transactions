@@ -1,33 +1,32 @@
 package org.app;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.List;
-import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import org.app.models.Statistics;
 import org.app.models.Transaction;
+import org.app.persistence.TransactionRepository;
 
 @Service
 public class TransactionsHandler implements Observer {
-    private static List<Transaction> storage = new LinkedList<>();
-    private static boolean statisticsCalculated = false;
     private static Statistics statistics = new Statistics();
+    private final TransactionRepository repository;
 
-    private TransactionsHandler() {
-
+    @Autowired
+    public TransactionsHandler(TransactionRepository repository) {
+        this.repository = repository;
     }
 
     public List<Transaction> getAllTransactions() {
-        return storage;
+        return repository.findByIsDeleted(false);
     }
 
     public synchronized ResponseEntity addSingleTransaction(Transaction transaction) {
@@ -38,17 +37,15 @@ public class TransactionsHandler implements Observer {
         } else if (transaction.getTimestamp().isBefore(timestamp.minusMinutes(1))) {
             return new ResponseEntity(HttpStatus.NO_CONTENT);
         } else {
-            transaction.addObserver(this);
-            storage.add(transaction);
-            transaction.startAutoDeprecate();
-            calculateStatistics(transaction, true);
+            Transaction savedTransaction = repository.save(transaction);
+            savedTransaction.startAutoDeprecate(this);
+            createStatistics();
         }
 
         return new ResponseEntity(HttpStatus.CREATED);
     }
 
     public ResponseEntity deleteAllTransactions() {
-        storage.clear();
         clearStatistics();
         return new ResponseEntity(HttpStatus.NO_CONTENT);
     }
@@ -57,34 +54,18 @@ public class TransactionsHandler implements Observer {
         return statistics;
     }
 
-    public void calculateStatistics(Transaction transaction, boolean isAdding) {
+    public void createStatistics() {
+        long count = repository.getCountAmount();
         BigDecimal sum;
         BigDecimal avg;
         BigDecimal max;
         BigDecimal min;
-        long count = storage.size();
 
         if (count > 0) {
-            if (statisticsCalculated) {
-                if (isAdding) {
-                    Collections.sort(storage, (t1, t2) -> t2.getAmount().compareTo(t1.getAmount()));
-                    sum = statistics.getBigDecimalSum().add(transaction.getAmount());
-                } else {
-                    sum = statistics.getBigDecimalSum().subtract(transaction.getAmount());
-                }
-
-                max = ((LinkedList<Transaction>) storage).getFirst().getAmount();
-                min = ((LinkedList<Transaction>) storage).getLast().getAmount();
-            } else {
-                max = transaction.getAmount();
-                min = transaction.getAmount();
-                sum = transaction.getAmount();
-
-                statisticsCalculated = true;
-            }
-
-            sum = sum.setScale(2);
-            avg = sum.divide(BigDecimal.valueOf(count), RoundingMode.HALF_EVEN);
+            sum = repository.getSumAmount();
+            avg = repository.getAvgAmount();
+            max = repository.getMaxAmount();
+            min = repository.getMinAmount();
 
             statistics = new Statistics(sum, avg, max, min, count);
         } else {
@@ -94,13 +75,12 @@ public class TransactionsHandler implements Observer {
 
     public void clearStatistics() {
         statistics = new Statistics();
-        statisticsCalculated = false;
     }
 
     @Override
     public synchronized void update(Observable obj, Object arg) {
         Transaction deprecatedTransaction = (Transaction) arg;
-        storage.remove(deprecatedTransaction);
-        calculateStatistics(deprecatedTransaction, false);
+        repository.setIsDeletedById(true, deprecatedTransaction.getId());
+        createStatistics();
     }
 }

@@ -22,15 +22,22 @@ import org.app.models.Transaction;
 
 @RestController
 class TransactionsController {
-    @Autowired
-    private TransactionsHandler transactionsHandler;
+    private final static String TRANSACTIONS = "/transactions";
+    private final static String STATISTICS = "/statistics";
 
-    @GetMapping("transactions")
+    private final TransactionsHandler transactionsHandler;
+
+    @Autowired
+    public TransactionsController(TransactionsHandler transactionsHandler) {
+        this.transactionsHandler = transactionsHandler;
+    }
+
+    @GetMapping(TRANSACTIONS)
     public List<Transaction> getTransactions() {
         return transactionsHandler.getAllTransactions();
     }
 
-    @PostMapping("/transactions")
+    @PostMapping(TRANSACTIONS)
     public ResponseEntity addTransaction(
             @RequestBody Transaction transaction) {
         return transactionsHandler.addSingleTransaction(transaction);
@@ -46,12 +53,12 @@ class TransactionsController {
         return new ResponseEntity(HttpStatus.BAD_REQUEST);
     }
 
-    @DeleteMapping("/transactions")
+    @DeleteMapping(TRANSACTIONS)
     public ResponseEntity deleteTransactions() {
         return transactionsHandler.deleteAllTransactions();
     }
 
-    @GetMapping("statistics")
+    @GetMapping(STATISTICS)
     public Statistics getStatics() {
         return transactionsHandler.getStatistics();
     }
