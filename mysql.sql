@@ -1,5 +1,5 @@
 CREATE database bank;
-CREATE USER 'appcontroller'@'localhost' identified BY '>8xO@p2;$t6+';
+CREATE USER 'appcontroller'@'localhost' identified BY '';
 GRANT ALL ON bank.* TO 'appcontroller'@'localhost';
 CREATE TABLE `transactions` (
   `id` int NOT NULL,

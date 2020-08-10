@@ -18,9 +18,12 @@ import org.app.persistence.TransactionRepository;
 @Service
 public class TransactionsHandler implements Observer {
     private static Statistics statistics = new Statistics();
+    private final TransactionRepository repository;
 
     @Autowired
-    private TransactionRepository repository;
+    public TransactionsHandler(TransactionRepository repository) {
+        this.repository = repository;
+    }
 
     public List<Transaction> getAllTransactions() {
         return repository.findByIsDeleted(false);
